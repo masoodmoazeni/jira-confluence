@@ -1,0 +1,161 @@
+version: '3.4'
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:11
+    restart: always
+    ports:
+    - "5432:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123%abc
+      PGDATA: /var/lib/postgresql/data/pgdata 
+    volumes:
+    - ./data/postgres-initdb.d:/docker-entrypoint-initdb.d
+    - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  crowd:
+    image: registry.cn-shenzhen.aliyuncs.com/edana/crowd:4.3.5
+    container_name: crowd
+    restart: always
+    ports:
+      - "8095:8095"
+    environment:
+      JVM_MINIMUM_MEMORY: "1g"
+      JVM_MAXIMUM_MEMORY: "1g"
+      TZ: "Asia/Shanghai"
+      PROXY_ENABLED: "true"
+      PROXY_SCHEME: "https"
+      PROXY_NAME: "crowd.maneki.cn"
+      PROXY_PORT: "443"
+    volumes:
+      - ./data/crowd:/var/lib/atlassian/crowd
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8095/crowd/status"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+    - postgres
+  jira:
+    image: registry.cn-shenzhen.aliyuncs.com/edana/jira:8.13.11
+    container_name: jira
+    restart: always
+    ports:
+      - "8000:8080"
+    environment:
+      JVM_MINIMUM_MEMORY: "4g"
+      JVM_MAXIMUM_MEMORY: "4g"
+      TZ: "Asia/Shanghai"
+      PROXY_ENABLED: "true"
+      PROXY_SCHEME: "https"
+      PROXY_NAME: "jira.maneki.cn"
+      PROXY_PORT: "443"
+    volumes:
+      - ./data/jira:/var/lib/atlassian/jira
+        #- ./data/jira-conf/setenv.sh:/opt/atlassian/jira/setenv.sh
+        #- ./data/jira-conf/server.xml:/opt/atlassian/jira/conf/server.xml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+    - crowd
+  confluence:
+    image: registry.cn-shenzhen.aliyuncs.com/edana/confluence:7.13.1
+    container_name: confluence
+    restart: always
+    ports:
+      - "8090:8090"
+    environment:
+      JVM_MINIMUM_MEMORY: "4g"
+      JVM_MAXIMUM_MEMORY: "4g"
+      TZ: "Asia/Shanghai"
+      PROXY_ENABLED: "true"
+      PROXY_SCHEME: "https"
+      PROXY_NAME: "confluence.maneki.cn"
+      PROXY_PORT: "443"
+    volumes:
+      - ./data/confluence:/var/lib/atlassian/confluence
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/status"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+    - crowd
+  bitbucket:
+    image: registry.cn-shenzhen.aliyuncs.com/edana/bitbucket:7.6.9
+    container_name: bitbucket
+    restart: always
+    ports:
+      - "7990:7990"
+      - "7999:7999"
+    environment:
+      JVM_MINIMUM_MEMORY: "4g"
+      JVM_MAXIMUM_MEMORY: "4g"
+      TZ: "Asia/Shanghai"
+      PROXY_ENABLED: "true"
+      PROXY_SCHEME: "https"
+      PROXY_NAME: "bitbucket.maneki.cn"
+      PROXY_PORT: "443"
+    volumes:
+      - ./data/bitbucket:/var/lib/atlassian/bitbucket
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7990/status"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+    - crowd
+  nexus:
+    image: registry.cn-shenzhen.aliyuncs.com/edana/nexus:3.34.1
+    container_name: nexus
+    restart: always
+    ports:
+      - "8082:8081"
+    environment:
+      TZ: "Asia/Shanghai"
+      CROWD_ENABLED: "true"
+      CROWD_NAME: "nexus"
+      CROWD_PASSWORD: "nexus@123"
+      CROWD_URL: "http://crowd:8095/crowd"
+    # startnd the copy home data from docker
+    volumes:
+      - ./data/nexus:/nexus-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/service/rest/v1/status"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+    - crowd
+  sonarqube:
+    image: sonarqube:9-community
+    container_name: sonarqube
+    restart: always
+    ports:
+    - "9000:9000"
+    environment:
+      TZ: "Asia/Shanghai"
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar@123
+    volumes:
+    - ./data/sonarqube/conf:/opt/sonarqube/conf
+    - ./data/sonarqube/data:/opt/sonarqube/data
+    - ./data/sonarqube/logs:/opt/sonarqube/logs
+    - ./data/sonarqube/extensions:/opt/sonarqube/extensions
+    depends_on:
+    - crowd
+    - postgres
