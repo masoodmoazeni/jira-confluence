@@ -30,5 +30,5 @@ $ java -jar atlassian-agent.jar -d -m [yourEmail] -n BAT -p conf -o http://[Serv
 
 You may also like:
 
-* [jira][https://hub.docker.com/r/atlassian/jira-software]: The #1 jira image in docker hub
+* [jira][https://hub.docker.com/r/atlassian/jira-software]: jira image in docker hub
 * [confluence][https://hub.docker.com/r/atlassian/confluence-server]: confluence image in docker hub
