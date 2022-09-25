@@ -1,5 +1,4 @@
 # jira-confluence
-----------------------------------------
 you can install jira and confluence with code
 ~~~~
 $ docker-compose up -d
